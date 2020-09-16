@@ -1,0 +1,289 @@
+---
+title: "Assignment 1"
+author: "Emma Colley"
+date: "9/16/2020"
+output: html_document
+---
+# Introduction
+
+This assignment aims to illustrate the distribution of six variables in ten different figures. Using Census tracts as my neighborhood-level statistical area, I selected six variables (two categorical and four continuous). Broadly, I aimed to examine homeownership and race in Suffolk County. 
+
+## Loading Libraries
+
+```{r load libraries, message = FALSE}
+library(tidyverse)
+library(tidycensus)
+library(ggplot2)
+library(ggthemes)
+```
+
+## Defining Variables
+
+Here are the six variables I selected. I will use these to experiment with different plots and figures:
+
+*Categorical*
+1. The majority racial/ethnic identity
+2. Whether homeownership in the tract is majority white ownership or non-white ownership
+
+*Continuous*
+3. The population of the tract 
+4. Average household size
+5. The percent of households who own their homes
+6. The median age of residents
+
+## Loading Variables and Getting Data
+
+I replicated the majority race/ethnicity variable from Carole's tutorial and by doing so I learned to use the mutate function to create a new categorical variable about white homeownership vs. non-white homeownership. This will come up in several of the plots.
+
+```{r load decennial variables, results = 'hide', message = FALSE}
+area_vars_2010 <- load_variables(2010, "sf1")
+```
+
+```{r load census data, results = 'hide', message = FALSE}
+vars <- c(tot_hh = "H001001",
+          tot_hh_owner = "H006001",
+          hh_owner_white = "H006002",
+         tot_own_mortgage_hh = "H004002",
+         tot_own_clear_hh = "H004003",
+         avg_hh_size = "H012001",
+         tot_pop = "P003001",
+         nh_white_pop = "P005003",
+         nh_black_pop = "P005004",
+         nh_asian_pop = "P005006",
+         hispanic_pop = "P005010",
+         med_age = "P013001")
+
+SD_tracts <- get_decennial(geography = "tract", variables = vars,
+                           state = "MA", county = "Suffolk",
+                           output = "wide") %>%
+mutate(pct_own = (tot_own_mortgage_hh + tot_own_clear_hh) / tot_hh,
+         majority_white_ownership = case_when(
+           hh_owner_white / tot_hh_owner > 0.5 ~ "TRUE",
+           hh_owner_white / tot_hh_owner < 0.5 ~ "FALSE"),
+         majority_race_eth = case_when(
+           nh_white_pop / tot_pop > 0.5 ~ "nh_white",
+           nh_black_pop / tot_pop > 0.5 ~ "nh_black",
+           nh_asian_pop / tot_pop > 0.5 ~ "nh_asian",
+           hispanic_pop / tot_pop > 0.5 ~ "hispanic",
+           (nh_white_pop + nh_black_pop + nh_asian_pop + hispanic_pop) /
+             tot_pop < 0.5 ~ "other",
+           TRUE ~ "None")) %>%
+  filter(tot_pop > 0, tot_hh > 0) %>%
+  select(GEOID, majority_white_ownership, majority_race_eth, 
+         pct_own, avg_hh_size, tot_pop, med_age)
+```
+
+## Plot 1
+
+This is a scatter plot that has a continuous variable on each axis and represents one categorical variable using color. In general, it looks like the higher the median age within a tract, the higher the percentage of homeowners.
+
+```{r}
+ggplot(SD_tracts, 
+       aes(x = pct_own,
+           y = med_age,
+           color = majority_race_eth)) +
+  geom_point() +
+  scale_x_continuous(name = "Percent of Households in Owned Homes",
+                     breaks = seq(0, 1, by = 0.1),
+                     labels = paste(seq(0, 100, by = 10), "%", sep = "")) +
+  scale_y_continuous(name = "Median age within tract",
+                     breaks = seq(10, 80, by = 10)) +
+  scale_color_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Non-Hispanic Asian",
+                                  "Black or African American",
+                                  "White (Non-Hispanic)",
+                                  "No majority")) +
+  theme_light() 
+```
+## Plot 2
+
+Here I introduced a trend line. I also changed the Y-axis variable to "Average Household Size". It looks like tracts that are a majority white (non-Hispanic) have the lowest average household size.
+
+```{r results = 'hide', message = FALSE}
+ggplot(SD_tracts, 
+       aes(x = pct_own,
+           y = avg_hh_size,
+           color = majority_race_eth,
+           fill = majority_race_eth)) +
+  geom_point() +
+  stat_smooth(method = "lm") +
+  scale_x_continuous(name = "Percent of Households that Own Their Home",
+                     breaks = seq(0, 1, by = 0.1),
+                     labels = paste(seq(0, 100, by = 10), "%", sep = "")) +
+  scale_y_continuous(name = "Average Household Size",
+                     breaks = seq(1, 10, by = 1)) +
+  scale_color_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Non-Hispanic Asian",
+                                  "Black or African American",
+                                  "White (Non-Hispanic)",
+                                  "No majority")) +
+  scale_fill_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Non-Hispanic Asian",
+                                  "Black or African American",
+                                  "White (Non-Hispanic)",
+                                  "No majority")) +
+  theme_minimal() 
+```
+
+## Plot 3
+
+Here is a scatter plot showing Track Population and the Percentage of Household that Own Their Home. This plot isn't saying much, but here I was experimenting with ggthemes, which I'm still figuring out. Many of the aesthetically pleasing themes were causing me issue with X and Y axis labels. 
+
+```{r}
+ggplot(SD_tracts, 
+       aes(x = tot_pop,
+           y = pct_own)) +
+  geom_point() +
+  stat_smooth(color = "black", linetype = 2, size = 0.5) +
+  scale_x_continuous(name = "Tract population") +
+  scale_y_continuous(name = "Percentage of Households that Own their Home") +
+  theme_economist()
+```
+
+## Plot 4
+
+Here I am representing a continuous and categorical variable with position. I used "jitter" and adjusted the color and size to better represent each data point. The relationship between average household size and majority race/ethnicity is interesting to me.
+
+```{r}
+ggplot(SD_tracts, 
+       aes(x = majority_race_eth,
+           y = avg_hh_size,
+           color = majority_race_eth)) +
+  geom_point(position = "jitter",
+             size = 1.0,
+             alpha = 0.9) +
+  scale_x_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Non-Hispanic Asian",
+                                  "Black",
+                                  "Non-Hispanic white",
+                                  "No majority")) +
+  scale_y_continuous(name = "Average Household Size",
+                     breaks = seq(1, 10, by = 1)) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+## Plot 5
+
+Here is a box plot. I experimented with flipping the x and y axis. I am also switching up the continuous variables again.
+
+```{r}
+ggplot(SD_tracts, 
+       aes(x = majority_race_eth,
+           y = pct_own,
+           color = majority_race_eth)) +
+  geom_boxplot() +  coord_flip() +
+  scale_x_discrete(name = "Majority Race/Ethnicity",
+                       labels = c("Hispanic",
+                                  "Asian Non-Hispanic",
+                                  "Black or African American",
+                                  "White Non-Hispanic",
+                                  "No majority")) +
+  scale_y_continuous(name = "Percent of Households ThatOwn Their Homes",
+                     breaks = seq(0, 1, by = 0.1)) +
+  theme_tufte() +
+  theme(legend.position = "none")
+```
+
+## Plot 6
+
+This is a violin plot with a scatter plot on top of it. I referenced Reuven's code to add in a fill. This plot shows that tracts with a majority of white households have the largest spread of percentage of homeownership.
+
+```{r}
+ggplot(SD_tracts, 
+       aes(x = majority_race_eth,
+           y = pct_own, fill = majority_race_eth,
+           color = majority_race_eth)) +
+  geom_violin() +
+  geom_point(position = "jitter",
+             alpha = 0.5,
+             size = 0.5) +
+  scale_x_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Asian Non-Hispanic",
+                                  "Black or African American",
+                                  "White Non-Hispanic",
+                                  "No majority")) +
+  scale_y_continuous(name = "Percentage of Households that Own Their Home",
+                     breaks = seq(0, 1, by = 0.1)) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+## Plot 7
+
+This is a bar chart that shows the distribution of two continuous variables. I compared tracts with a majority of white homeownership and a majority of non-white homeownership to see how that related to the overall majority race/ethnicity of the tracts.
+
+```{r}
+ggplot(SD_tracts, aes(x = majority_race_eth, fill = majority_white_ownership)) +
+  geom_bar() +
+  scale_y_continuous(name = "Number of tracts") +
+  scale_x_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Non-Hispanic\nAsian",
+                                  "Black",
+                                  "Non-Hispanic\nwhite",
+                                  "No majority")) +
+  scale_fill_discrete(name = element_blank(),
+                        labels = c("Majority Non-White Homeownership",
+                                   "Majority White Homeownership")) +
+  theme_bw() 
+```
+## Plot 8
+
+This is an iteration on Plot 7 to add in one more variable. I referenced Taelor's code and made a heat map of race, white homeownership, and percentage of homeownership. It's not the best graphic, but it's interesting that there is a tract in pale pink whose majority race is white, has a very high percentage of homeownership but the majority of these homes are not owned by white people.
+
+```{r}
+ggplot(SD_tracts, aes(x = majority_race_eth, y = majority_white_ownership, fill = pct_own)) +
+       geom_tile() + coord_flip() +
+      scale_x_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Asian Non-Hispanic",
+                                  "Black or African American",
+                                  "White Non-Hispanic",
+                                  "No majority")) +
+      scale_y_discrete(name = "Majority White Homeownership",
+                       labels = c("Yes",
+                                  "No")) +
+      scale_fill_distiller(palette = "RdPu") +
+      labs(fill = "Percent of Homeownership") + 
+      theme_light()
+```
+
+## Plot 9
+
+This is a pie chart.
+
+```{r}
+pie_chart <- ggplot(SD_tracts, aes(x = 1, fill = majority_race_eth)) +
+  geom_bar(position = "fill") +
+  coord_polar(theta = "y") +
+  scale_y_continuous(name = "Number of tracts") +
+  scale_fill_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Non-Hispanic\nAsian",
+                                  "Black",
+                                  "Non-Hispanic\nwhite",
+                                  "No majority")) +
+  theme_void() 
+
+pie_chart
+```
+
+## Plot 10
+
+This is an area chart of the percentage of homeownership by tract. I like the simplicity of this and wanted to experiment with color. 
+
+```{r}
+ggplot(SD_tracts, aes(x = pct_own)) +
+  geom_density(fill="#f1cddc", color="#f1cddc", alpha=0.8) +
+  scale_x_continuous(name = "Percent of Homeownership",
+                     breaks = seq(0, 1, by = 0.1),
+                     labels = paste(seq(0, 100, by = 10), "%", sep = "")) +
+  theme_light()
+```
+
