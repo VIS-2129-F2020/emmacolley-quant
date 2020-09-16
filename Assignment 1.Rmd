@@ -30,10 +30,10 @@ Here are the six variables I selected. I will use these to experiment with diffe
 2. Whether homeownership in the tract is majority white ownership or non-white ownership
 
 *Continuous*
-3. The population of the tract 
-4. Average household size
-5. The percent of households who own their homes
-6. The median age of residents
+1. The population of the tract 
+2. Average household size
+3. The percent of households who own their homes
+4. The median age of residents
 
 ## Loading Variables and Data
 
@@ -331,4 +331,4 @@ ggplot(SD_tracts, aes(x = factor(majority_race_eth), y = pct_own, fill = factor(
 
 ## Conclusion
 
-I still need to become more creative and adventurous with these plots. There are small graphic tweaks I am working on such as color, font and lineweights. I am extremely comfortable with doing this in Illustrator but would like to keep practicing the R code. 
+Practicing representation skills through R has helped me to better read and interpret data. Because I stayed pretty close to the content in the tutorials, I think I need to become more creative and adventurous with these plots. There are graphic tweaks I am working on such as color, font and lineweights. I am extremely comfortable with doing this in Illustrator but would like to keep practicing the R code. I appreciate this assignment in conjunction with the Quant assignments.
