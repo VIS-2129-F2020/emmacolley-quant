@@ -2,7 +2,11 @@
 title: "Assignment 1"
 author: "Emma Colley"
 date: "9/16/2020"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: journal
 ---
 # Introduction
 
@@ -31,7 +35,7 @@ Here are the six variables I selected. I will use these to experiment with diffe
 5. The percent of households who own their homes
 6. The median age of residents
 
-## Loading Variables and Getting Data
+## Loading Variables and Data
 
 I replicated the majority race/ethnicity variable from Carole's tutorial and by doing so I learned to use the mutate function to create a new categorical variable about white homeownership vs. non-white homeownership. This will come up in several of the plots.
 
@@ -96,6 +100,7 @@ ggplot(SD_tracts,
                                   "No majority")) +
   theme_light() 
 ```
+
 ## Plot 2
 
 Here I introduced a trend line. I also changed the Y-axis variable to "Average Household Size". It looks like tracts that are a majority white (non-Hispanic) have the lowest average household size.
@@ -233,6 +238,7 @@ ggplot(SD_tracts, aes(x = majority_race_eth, fill = majority_white_ownership)) +
                                    "Majority White Homeownership")) +
   theme_bw() 
 ```
+
 ## Plot 8
 
 This is an iteration on Plot 7 to add in one more variable. I referenced Taelor's code and made a heat map of race, white homeownership, and percentage of homeownership. It's not the best graphic, but it's interesting that there is a tract in pale pink whose majority race is white, has a very high percentage of homeownership but the majority of these homes are not owned by white people.
@@ -256,7 +262,7 @@ ggplot(SD_tracts, aes(x = majority_race_eth, y = majority_white_ownership, fill 
 
 ## Plot 9
 
-This is a pie chart.
+This is a pie chart. My next step will be to learn to edit the colors of this. I'm still confused by the ggplot cheatsheet.
 
 ```{r}
 pie_chart <- ggplot(SD_tracts, aes(x = 1, fill = majority_race_eth)) +
@@ -276,7 +282,7 @@ pie_chart
 
 ## Plot 10
 
-This is an area chart of the percentage of homeownership by tract. I like the simplicity of this and wanted to experiment with color. 
+This is an area chart of the percentage of homeownership by tract. I liked the simplicity of this in Taelor's example and wanted to experiment with changing the color. 
 
 ```{r}
 ggplot(SD_tracts, aes(x = pct_own)) +
@@ -287,3 +293,42 @@ ggplot(SD_tracts, aes(x = pct_own)) +
   theme_light()
 ```
 
+
+## Plot 11
+
+This is a dot plot inspired by a combination of several examples. I think this graphic is one of the most clear, actually, but again I want to learn to edits the colors.
+
+```{r}
+ggplot(SD_tracts, aes(x = factor(majority_race_eth), y = pct_own, fill = factor(majority_race_eth))) +
+    geom_dotplot(binaxis = "y", dotsize = 0.6) + 
+    scale_y_continuous(name = "Percent of Households that Own Their Home",
+                     breaks = seq(0, 1, by = 0.1),
+                     labels = paste(seq(0, 100, by = 10), "%", sep = "")) + 
+    scale_x_discrete(name = "Majority race/ethnicity",
+                       labels = c("Hispanic",
+                                  "Asian",
+                                  "Black or African American",
+                                  "White",
+                                  "No majority")) + 
+    labs(fill = "Majority race/ethnicity") +
+    scale_fill_discrete(name = "Majority race/ethnicity",
+                       breaks=c("Hispanic",
+                                  "Non-Hispanic Asian",
+                                  "Black or African American",
+                                  "White (Non-Hispanic)",
+                                  "No majority"),
+                         labels=c("Hispanic",
+                                  "Non-Hispanic Asian",
+                                  "Black or African American",
+                                  "White (Non-Hispanic)",
+                                  "No majority")) +
+  labs(
+    x='Majority race/ethnicity', 
+    y= 'Percent of Households that Own Their Home',
+    title = 'Race/Ethnicity and Homeownership')+
+  theme_minimal()
+```
+
+## Conclusion
+
+I still need to become more creative and adventurous with these plots. There are small graphic tweaks I am working on such as color, font and lineweights. I am extremely comfortable with doing this in Illustrator but would like to keep practicing the R code. 
