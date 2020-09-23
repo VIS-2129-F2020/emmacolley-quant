@@ -1,7 +1,7 @@
 ---
-title: "Assignment 21"
+title: "Assignment 2"
 author: "Emma Colley"
-date: "9/16/2020"
+date: "9/23/2020"
 output: 
   html_document:
     toc: true
@@ -44,7 +44,7 @@ US_map
 ```{r}
 #United States
 USA_AEA <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=clrk66 +units=m +no_defs"
-MA_state_plane <- "+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000 +ellps=GRS80 +units=m +no_defs"
+NY_state_plane <- "+proj=tmerc +lat_0=40 +lon_0=-78.58333333333333 +k=0.9999375 +x_0=350000 +y_0=0 +ellps=GRS80 +units=m +no_defs"
 HI_AEA <- "+proj=aea +lat_1=8 +lat_2=18 +lat_0=13 +lon_0=-157 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 ```
 
@@ -57,12 +57,12 @@ ggplot(US_states) +
   theme_bw()
 ```
 
-## Reprojecting based on MA State Plan
+## Reprojecting based on New York West State Plane
 
 ```{r}
 ggplot(US_states) +
   geom_sf() +
-  coord_sf(crs = MA_state_plane) +
+  coord_sf(crs = NY_state_plane) +
   theme_bw()
 ```
 
@@ -96,6 +96,7 @@ evictions_states <-states_transformed %>%
 
 ## Chloropleth Map
 
+
 I am mapping the eviction rate of each state in the contiguous United States. The highest eviction rate is in South Carolina at 8.87% and the lowest in is New Jersey at 0.10%. My classmate Megan Willis-Jackson helped me label the states.
 
 
@@ -111,7 +112,9 @@ ggplot(evictions_states, aes(fill = `eviction-rate`)) +
   theme(legend.background = element_blank())
 ```
 
+
 ## Continuous Cartogram Sized by Total Population
+
 
 Here I am still color coding the states by Eviction Rate but I am distorting the shapes of the states by population (total number of people.)
 
@@ -130,7 +133,9 @@ ggplot(evictions_cartogram_cont, aes(fill = `eviction-rate`)) +
   theme(legend.background = element_blank())
 ```
 
+
 ## Continuous Cartogram Sized by Percentage of Population that is African American
+
 
 Here I am still color coding the states by Eviction Rate but I am distorting the shapes of the states by the percentage of the population that is African American. I was predicting that these two variables would be telling when paired, but this cartogram is pretty illegible. It does look like the "larger" states in the South and South East with a high percentage of African Americans have medium to high eviction rates. 
 
@@ -149,7 +154,9 @@ ggplot(evictions_cartogram_cont, aes(fill = `eviction-rate`)) +
   theme(legend.background = element_blank())
 ```
 
+
 ## Dorling Cartogram
+
 
 Here is a Dorling Cartogram, again referencing total population size, where I've labeled each state's bubble with it's eviction rate for further clarity.
 
@@ -169,8 +176,8 @@ ggplot(evictions_cartogram_dorling, aes(fill = `eviction-rate`)) +
 
 
 
-
 ## Proportional Symbol Map
+
 
 Here is a proportional dot map. It looks like there are high eviction rates along the east coast, especially in the South East, but the representation could be misleading because those states are also small and close together.
 
