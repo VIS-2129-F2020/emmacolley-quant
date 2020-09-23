@@ -104,8 +104,9 @@ ggplot(evictions_states, aes(fill = `eviction-rate`)) +
   geom_sf(color = NA) +
   labs(title = "2016 Eviction Rates in the United States") +
   labs(caption = "Note: North Dakota, South Dakota, and Arkansas are missing data in 2016.") +
-  scale_fill_viridis_c(name = "Eviction Rate") +
-  geom_sf_label(aes(geometry, label = postal), size = 1.8, color = "white", fill = NA, label.size = NA, fontface = "bold",)
+  scale_fill_viridis_c(name = "Eviction Rate", breaks = seq(0,10, by = 2), labels = c("0%", "2%", "4%", "6%", "8%", "10%")) +
+  geom_sf_label(aes(geometry, label = postal), size = 1.8, color = "white", fill = NA, label.size = NA, fontface = "bold",) +
+  labs(x = "", y = "")
   theme_map() +
   theme(legend.background = element_blank())
 ```
@@ -121,9 +122,10 @@ evictions_cartogram_cont <- evictions_states %>%
 
 ggplot(evictions_cartogram_cont, aes(fill = `eviction-rate`)) +
   geom_sf(color = NA) +
-  labs(title = "2016 Eviction Rates in the United States, States Altered by Population Size") +
+  labs(title = "2016 Eviction Rates in the U.S., State Size by Population Size") +
   labs(caption = "Note: North Dakota, South Dakota, and Arkansas are missing data in 2016.") +
-  scale_fill_viridis_c(name = "Eviction Rate") +
+  scale_fill_viridis_c(name = "Eviction Rate", breaks = seq(0,10, by = 2), labels = c("0%", "2%", "4%", "6%", "8%", "10%")) +
+  geom_sf_label(aes(geometry, label = postal), size = 1.8, color = "white", fill = NA, label.size = NA, fontface = "bold",) +
   theme_map() +
   theme(legend.background = element_blank())
 ```
@@ -139,9 +141,9 @@ evictions_cartogram_cont <- evictions_states %>%
 
 ggplot(evictions_cartogram_cont, aes(fill = `eviction-rate`)) +
   geom_sf(color = NA) +
-    labs(title = "2016 Eviction Rates in the United States, States Altered by African American Population Size") +
+    labs(title = "2016 Eviction Rates in the U.S., State Size by Percentage of Population that is African American") +
   labs(caption = "Note: North Dakota, South Dakota, and Arkansas are missing data in 2016.") +
-  scale_fill_viridis_c(name = "Eviction Rate") +
+  scale_fill_viridis_c(name = "Eviction Rate", breaks = seq(0,10, by = 2), labels = c("0%", "2%", "4%", "6%", "8%", "10%")) +
   geom_sf_label(aes(geometry, label = postal), size = 1.8, color = "white", fill = NA, label.size = NA, fontface = "bold",) +
   theme_map() +
   theme(legend.background = element_blank())
