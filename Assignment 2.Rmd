@@ -149,6 +149,27 @@ ggplot(evictions_cartogram_cont, aes(fill = `eviction-rate`)) +
   theme(legend.background = element_blank())
 ```
 
+## Dorling Cartogram
+
+Here is a Dorling Cartogram, again referencing total population size, where I've labeled each state's bubble with it's eviction rate for further clarity.
+
+```{r, results = 'hide', message = FALSE}
+evictions_cartogram_dorling <- evictions_states %>%
+  cartogram_dorling("population")
+
+ggplot(evictions_cartogram_dorling, aes(fill = `eviction-rate`)) +
+  geom_sf(color = NA) +
+  labs(title = "2016 Eviction Rates in the U.S.") +
+  labs(caption = "Note: North Dakota, South Dakota, and Arkansas are missing data in 2016.") +
+  scale_fill_viridis_c(name = "Eviction Rate", breaks = seq(0,10, by = 2), labels = c("0%", "2%", "4%", "6%", "8%", "10%")) +
+    geom_sf_label(aes(geometry, label = paste(`eviction-rate`, "%")), size = 1.9, color = "white", fill = NA, label.size = NA, fontface = "bold",) +
+  theme_map() +
+  theme(legend.background = element_blank())
+```
+
+
+
+
 ## Proportional Symbol Map
 
 Here is a proportional dot map. It looks like there are high eviction rates along the east coast, especially in the South East, but the representation could be misleading because those states are also small and close together.
