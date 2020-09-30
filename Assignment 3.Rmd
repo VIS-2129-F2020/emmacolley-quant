@@ -1,0 +1,339 @@
+---
+title: "Assignment 3"
+author: "Emma Colley"
+date: "9/30/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: journal
+    code_folding: hide
+---
+
+```{r load libraries, message = FALSE}
+library(sf)
+library(tidyverse)
+library(ggthemes)
+library(ggspatial)
+library(units)
+library(nngeo)
+library(ggplot2)
+library(viridis)
+```
+
+
+# Introduction
+
+
+This week, I've examined five datasets from the Boston Open Data portal. I selected Boston because I want to learn more about the Boston neighborhoods we're analyzing in Studio. I was originally hoping to map Rochester, NY but the geospatial data was only available on DVD by mail. So old fashion! The datasets I'm representing are:
+
+
+*A    Free public WiFi access points*
+
+*B    Community centers*
+
+*C    Open space*
+
+*D    Neighborhoods of Boston*
+
+*E    Public schools*
+
+
+## Mapping All of the Data
+
+```{r}
+nbhoods <- st_read("http://bostonopendata-boston.opendata.arcgis.com/datasets/3525b0ee6e6b427f9aab5d0a1d0a1a28_0.kml?outSR=%7B%22latestWkid%22%3A2249%2C%22wkid%22%3A102686%7D", quiet = TRUE)
+
+openspace <- st_read("http://bostonopendata-boston.opendata.arcgis.com/datasets/2868d370c55d4d458d4ae2224ef8cddd_7.kml", quiet = TRUE)
+
+commcenter <- st_read("http://bostonopendata-boston.opendata.arcgis.com/datasets/acedd06b39854088b0f2fefccffebf84_0.kml?outSR=%7B%22latestWkid%22%3A3857%2C%22wkid%22%3A102100%7D", quiet = TRUE)
+
+wifi <- st_read("http://bostonopendata-boston.opendata.arcgis.com/datasets/4b803745fedd4e88861967d16a1e07fb_0.kml?outSR=%7B%22latestWkid%22%3A3857%2C%22wkid%22%3A102100%7D", quiet = TRUE)
+
+school <- st_read("http://bostonopendata-boston.opendata.arcgis.com/datasets/1d9509a8b2fd485d9ad471ba2fdb1f90_0.kml?outSR=%7B%22latestWkid%22%3A2249%2C%22wkid%22%3A102686%7D", quiet = TRUE)
+```
+
+
+```{r}
+MA_state_plane <- "+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000 +ellps=GRS80 +units=m +no_defs"
+
+nbhoods <- nbhoods %>%
+  st_transform(MA_state_plane)
+
+openspace <- openspace %>%
+  st_transform(MA_state_plane)
+
+commcenter <- commcenter %>%
+  st_transform(MA_state_plane)
+
+wifi <- wifi %>%
+  st_transform(MA_state_plane)
+
+school <- school %>%
+  st_transform(MA_state_plane)
+
+```
+
+```{r}
+ggplot(nbhoods) +
+  geom_sf(fill = "grey90", color = "white") +
+  geom_sf(data = openspace, fill = "darkseagreen4", color = NA) +
+  geom_sf(data = commcenter, color = "darksalmon", size = 2) +
+  geom_sf(data= wifi, color = "cadetblue3", size = 1) +
+  geom_sf(data= school, color = "lightskyblue3", size = 2) +  
+  theme_map()
+```
+
+## The number and proportion of A points within a specified distance of B points.
+
+
+How many of the "Wicked Free Wifi" spots (A) are within 30 meters of a community center (B)?
+
+
+```{r}
+commcenter_buffer <- st_buffer(commcenter, dist = 30) %>%
+  st_union()
+```
+
+```{r}
+wifi_commcenter <- wifi[commcenter_buffer,]
+```
+
+```{r}
+wifi <- wifi %>%
+  st_join(wifi_commcenter) %>%
+  mutate(by_commcenter = !is.na(Name.y))
+```
+
+```{r}
+n_commcenter_wifi <- sum(wifi$by_commcenter)
+
+n_commcenter_wifi
+```
+```{r}
+n_wifi <- length(wifi$by_commcenter)
+
+pct_commcenter_wifi <- n_commcenter_wifi / n_wifi
+
+pct_commcenter_wifi
+```
+```{r}
+left_side  <- st_bbox(wifi)$xmin
+top_side <- st_bbox(wifi)$ymax
+
+ggplot(nbhoods) +
+  geom_sf(fill = "gray90", color = "white") +
+  geom_sf(data = wifi, size = 1,
+          aes(color = by_commcenter)) +
+  scale_color_manual(values = c("lightsteelblue3", "midnightblue"),
+          name = "Wicked Free Wifi by\ndistance to a community center", 
+          labels = c("No WiFi hotspot within 30 m",
+                     "WiFi hotspot within 30 m")) +
+  annotate(geom = "text", x = left_side, 
+           y = top_side, 
+           label = paste(prettyNum(100*pct_commcenter_wifi, digits = 0),
+                         "% of Wicked Free WiFi hotspots are\nwithin 30 meters of a community center.",
+                         sep = ""),
+           hjust = .3, vjust = 0, size = 3) +
+  theme_map() +
+  theme(legend.position = c(.35, 0)) +
+  theme(legend.background = element_rect(fill = alpha("white", 0.4)))
+```
+
+## The number and proportion of A points within C polygons.
+
+How many of the "Wicked Free Wifi" hotspots (A) are within each open space in Boston (C)?
+
+```{r}
+openspace <- openspace %>%
+  mutate(num_wifi = lengths(st_covers(openspace, wifi)))
+
+ggplot(openspace) +
+  geom_sf(color = NA, 
+          aes(fill = num_wifi)) +
+  scale_fill_viridis_c(option = "C", name = "Open space\nby Wicked Free\nWiFi hotspots", breaks = breaks <- seq(0, 6, by = 1),
+                       labels = paste(prettyNum(breaks), "hotspots")) +
+theme_map() +
+  theme(legend.position = c(.7, 0)) +
+  theme(legend.background = element_rect(fill = alpha("white", 0.5)))
+```
+
+
+## The number and proportion of A points within D polygons.
+
+How many of the "Wicked Free Wifi" hotspots (A) are within each Boston neighborhood (D)?
+
+
+```{r}
+nbhoods <- nbhoods %>%
+  mutate(num_wifi = lengths(st_covers(nbhoods, wifi)))
+
+ggplot(nbhoods) +
+  geom_sf(color = NA, 
+          aes(fill = num_wifi)) +
+  scale_fill_viridis_c(option = "C", name = "Boston neighborhoods\nby wifi hot spots", breaks = breaks <- seq(0, 50, by = 10),
+                       labels = paste(prettyNum(breaks), "hotspots")) +
+theme_map() +
+  theme(legend.position = c(.7, 0)) +
+  theme(legend.background = element_rect(fill = alpha("white", 0.5)))
+```
+
+## The number and proportion of D polygons containing B points.
+
+How many Boston neighborhoods (D) contain community centers (B)?
+
+```{r}
+nbhoods <- nbhoods %>%
+  mutate(num_commcenter = lengths(st_covers(nbhoods, commcenter))) %>%
+  mutate(has_commcenter = num_commcenter > 0)
+```
+
+```{r}
+n_commcenter_nbhoods <- sum(nbhoods$has_commcenter)
+
+n_commcenter_nbhoods
+```
+
+```{r}
+ggplot(nbhoods) +
+  geom_sf(fill = NA, color = NA) +
+  geom_sf(data = nbhoods,
+          aes(fill = has_commcenter)) +
+  scale_fill_manual(values = c("darksalmon", "gray85"),
+          name = "Boston Neighborhoods\nby presence of a community center", 
+          labels = c("Without a community center",
+                     "With a community center")) +
+  annotation_scale(location = "br") +
+  annotation_north_arrow(location = "tr",
+                         style = north_arrow_minimal()) +
+  annotate(geom = "text", x = left_side, 
+           y = top_side - 1000, 
+           label = paste(n_commcenter_nbhoods ,
+                         "of Boston's", 
+                         length(nbhoods$Name),
+                         "neighborhoods\nhave a community center."),
+           hjust = .25, vjust = -1.5, size = 3) +
+  theme_map() +
+  theme(legend.position = c(.58, .1)) +
+  theme(panel.background = element_rect(fill = "gray95", color = NA),
+        legend.background = element_rect(fill = alpha("white", 0.1)))
+```
+
+
+An extra figure, related to the one above, showing the number of community centers in each neighborhood.
+
+
+```{r}
+nbhoods <- nbhoods %>%
+  mutate(num_commcenter = lengths(st_covers(nbhoods, commcenter)))
+```
+
+```{r}
+nbhoods <- nbhoods %>%
+  mutate(area = set_units(st_area(nbhoods), km^2)) %>%
+  mutate(commcenter_dens = as.numeric(num_commcenter / area))
+
+ggplot(nbhoods) +
+  geom_sf(color = NA, 
+          aes(fill = commcenter_dens)) +
+    scale_fill_viridis_c(option = "C", name = "Boston neighborhoods\nby community center") +
+  annotation_scale(location = "br") +
+  annotation_north_arrow(location = "tr",
+                         style = north_arrow_minimal()) +
+theme_map() +
+  theme(legend.position = "right",
+    legend.background = element_rect(fill = alpha("white", 0.5)))
+```
+
+
+
+
+## The average (Euclidean) distance between B points and their nearest respective E points.
+
+
+The average distance between a community center (B) and it's respective public school (E) is 204 meters.
+
+
+```{r, results = 'hide', message = FALSE}
+commcenter <- commcenter %>%
+  mutate(school_dist = st_nn(commcenter, school, 
+                           returnDist = TRUE)$dist) %>%
+  mutate(school_dist = as.numeric(school_dist))
+
+```
+
+```{r}
+avg_school_dist <- mean(commcenter$school_dist)
+
+avg_school_dist
+```
+
+```{r}
+ggplot(nbhoods) +
+  geom_sf(fill = "gray85", color = "white") +
+  geom_sf(data = commcenter, size = 2,
+          aes(color = school_dist)) +
+  scale_color_viridis_c(name = 
+                          "Community centers\nby distance to a\npublic school") +
+  annotation_scale(location = "br") +
+  annotation_north_arrow(location = "tr",
+                         style = north_arrow_minimal()) +
+  annotate(geom = "text", x = left_side + 300, 
+           y = top_side - 550, 
+           label = paste("On average, community centers\nare ", 
+                         prettyNum(avg_school_dist, digits = 3),
+                         " meters from a public school.",
+                         sep = ""),
+           hjust = .35, vjust = 0, size = 3) +
+  theme_map() +
+  theme(legend.position = c(.75, .05)) +
+  theme(panel.background = element_rect(fill = "gray95", color = NA),
+        legend.background = element_rect(fill = alpha("white", .1)))
+```
+
+
+
+## The number and proportion of C polygons that overlap with D polygons.
+
+```{r}
+nbhoods <- nbhoods %>%
+  mutate(num_openspace = lengths(st_overlaps(nbhoods, openspace))) %>%
+  mutate(has_openspace = num_openspace > 0)
+```
+
+
+```{r}
+n_openspace_nbhoods <- sum(nbhoods$has_openspace)
+
+n_openspace_nbhoods
+```
+
+25 out of 26 of Boston's neighborhoods contain or overlap with open space. This is a boring figure.
+
+
+```{r}
+left_side  <- st_bbox(openspace)$xmin
+top_side <- st_bbox(openspace)$ymax
+
+ggplot(openspace) +
+  geom_sf(fill = NA, color = "white") +
+  geom_sf(data = nbhoods,
+          aes(fill = has_openspace)) +
+  scale_fill_manual(values = c("black", "darkseagreen"),
+          name = "Boston Neighborhoods\nwith open space", 
+          labels = c("Neighborhood without\nopen space",
+                     "Neighborhood with an\nopen space")) +
+  annotate(geom = "text", x = left_side, 
+           y = top_side - 1000, 
+           label = paste(n_openspace_nbhoods ,
+                         "of Boston's", 
+                         length(nbhoods$Name),
+                         "neighborhoods contain\nor overlap with", 
+                         "open space."),
+           hjust = 0, vjust = 0, size = 3) +
+  theme_map() +
+  theme(legend.position = c(.7, 0)) +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        legend.background = element_rect(fill = alpha("white", 0.5)))
+```
+
