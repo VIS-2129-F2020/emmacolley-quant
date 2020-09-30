@@ -28,15 +28,18 @@ library(viridis)
 This week, I've examined five datasets from the Boston Open Data portal. I selected Boston because I want to learn more about the Boston neighborhoods we're analyzing in Studio. I was originally hoping to map Rochester, NY but the geospatial data was only available on DVD by mail. So old fashion! The datasets I'm representing are:
 
 
-*A    Free public WiFi access points*
+*A)    Free public WiFi access points*
 
-*B    Community centers*
+*B)    Community centers*
 
-*C    Open space*
+*C)    Open space*
 
-*D    Neighborhoods of Boston*
+*D)    Neighborhoods of Boston*
 
-*E    Public schools*
+*E)    Public schools*
+
+
+I learned how to hide my code by looking at my classmate Alex Cox's HTML. I also failed to load crucial libraries during my first attempt at these figures, which I also learned by referencing Alex. I tried to experiment with colors and themes as much as time allowed, but I'm only just beginning. 
 
 
 ## Mapping All of the Data
@@ -84,7 +87,7 @@ ggplot(nbhoods) +
   theme_map()
 ```
 
-## The number and proportion of A points within a specified distance of B points.
+## 1) The number and proportion of A points within a specified distance of B points.
 
 
 How many of the "Wicked Free Wifi" spots (A) are within 30 meters of a community center (B)?
@@ -140,9 +143,10 @@ ggplot(nbhoods) +
   theme(legend.background = element_rect(fill = alpha("white", 0.4)))
 ```
 
-## The number and proportion of A points within C polygons.
+## 2) The number and proportion of A points within C polygons.
 
 How many of the "Wicked Free Wifi" hotspots (A) are within each open space in Boston (C)?
+
 
 ```{r}
 openspace <- openspace %>%
@@ -159,7 +163,7 @@ theme_map() +
 ```
 
 
-## The number and proportion of A points within D polygons.
+## 3) The number and proportion of A points within D polygons.
 
 How many of the "Wicked Free Wifi" hotspots (A) are within each Boston neighborhood (D)?
 
@@ -178,7 +182,7 @@ theme_map() +
   theme(legend.background = element_rect(fill = alpha("white", 0.5)))
 ```
 
-## The number and proportion of D polygons containing B points.
+## 4) The number and proportion of D polygons containing B points.
 
 How many Boston neighborhoods (D) contain community centers (B)?
 
@@ -248,7 +252,7 @@ theme_map() +
 
 
 
-## The average (Euclidean) distance between B points and their nearest respective E points.
+## 5) The average (Euclidean) distance between B points and their nearest respective E points.
 
 
 The average distance between a community center (B) and it's respective public school (E) is 204 meters.
@@ -293,7 +297,7 @@ ggplot(nbhoods) +
 
 
 
-## The number and proportion of C polygons that overlap with D polygons.
+## 6) The number and proportion of C polygons that overlap with D polygons.
 
 ```{r}
 nbhoods <- nbhoods %>%
