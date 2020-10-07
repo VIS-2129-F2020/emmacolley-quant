@@ -55,7 +55,7 @@ opq(bbox = 'Boston MA USA') %>%
   osmdata_xml(file = 'OTP/graphs/default/boston_streets.osm')
 ```
 
-```{r}
+```{r, results='hide'}
 path_otp <- otp_dl_jar("OTP")
 ```
 
@@ -67,7 +67,7 @@ otp_build_graph(otp = path_otp, dir = path_data, memory = 1024)
 ```
 
 
-```{r}
+```{r, results='hide'}
 otp_setup(otp = path_otp, dir = path_data, memory = 1024)
 
 # Connect to opentripplanner
@@ -76,7 +76,7 @@ otpcon <- otp_connect()
 ## 1) Creating Isochrones
 
 
-I have plotted the new housing developments and created two isochrones: a five minute walk and a five minute drive. I've also layered in the T stops (all lines) to begin to see how close they are to the housing developments.
+I plotted the new housing developments with affordable units and created two isochrones: a five minute walk and a five minute drive. I've also layered in the T stops (all train lines) to begin to see how close they are to the housing developments.
 
 
 
@@ -106,18 +106,20 @@ ggplot(iso_all_modes) +
   annotation_map_tile(zoomin = 0, type = "cartolight", progress = "none") +
   geom_sf(aes(fill = mode), alpha = 0.5) +
   geom_sf(data = affordable_2020) +
-  geom_sf(data = Tstops, color = "lightslategrey") +
+  geom_sf(data = Tstops, color = "tomato1") +
   coord_sf(xlim = c(left_side, right_side), 
            ylim = c(bottom_side, top_side), expand = FALSE) +
-  scale_fill_manual(values = c("skyblue", "royalblue"), name = "Area that is reachable within", labels = c("5 min by car", "5 min by foot")) +
+  scale_fill_manual(values = c("skyblue", "royalblue"), name = "Area that is reachable\nwithin 5 min", labels = c("by car", "by walking")) +
   theme_map() +
-  labs(caption = "Basemap Copyright OpenStreetMap contributors")
+  theme(legend.background = element_rect(fill = alpha("white", .5))) +
+  labs(caption = "Red dots represent T stops.\nBasemap Copyright OpenStreetMap contributors.")
 ```
 
 ## 2) Plotting Walking and Driving distances
 
 
-I've labeled each housing development with their neighborhood to begin to understand differences between neighborhoods and commuting distances.
+I've labeled each housing development with their neighborhood to begin to visual any trends between neighborhoods and commuting distances. Which neighborhoods have larger walk sheds? Which have large drive sheds? It's hard to distinguish a pattern since I have a small sample set.
+
 
 
 ```{r}
@@ -129,12 +131,12 @@ iso_areas <- iso_all_modes %>%
 ggplot(iso_areas, 
        aes(x = as.numeric(walk), y = as.numeric(drive))) +
   geom_point(color = "lightslategrey", size = 3) +
-  geom_text(aes(label = c("Allston", "South Boston", "Dorchester", "Dorchester", "5", "6", "7","8","9","10")), hjust=-.3) +
-  scale_x_continuous(name = "Area within a ten-minute walking distance\nof housing development\n(square km)",
-            breaks = breaks <- seq(10000, 130000, by = 20000),
+  geom_text(aes(label = c("Roxbury", "South Boston", "South Boston", "Dorchester", "Mission Hill", "Brighton", "Jamaica Plain","Jamaica Plain","South End","South End")), hjust=-.2, size = 3) +
+  scale_x_continuous(name = "Area within a five-minute walking distance\nof housing development (square km)",
+            breaks = breaks <- seq(10000, 200000, by = 20000),
             labels = breaks / 1000000) +
   scale_y_continuous(name = 
-            "Area within a five-minute driving distance\nof housing development\n(square km)",
+            "Area within a five-minute driving distance\nof housing developmen (square km)",
             breaks = breaks <- seq(0, 700000, by = 100000),
             labels = breaks / 1000000) +
   theme_minimal()
@@ -144,15 +146,15 @@ ggplot(iso_areas,
 ## 3) Assigning a Transit Score to Each Isochrone
 
 
-I will use now investigate how many T stops are within each isochrone.
+I will use now investigate how many T stops are within each isochrone to see which housing developments are more accessible to the T by walking or driving. I am including both isochrones in this study. 
 
 
-```{r}
+```{r, results='hide', message=FALSE}
 st_as_sf(iso_all_modes)
 iso_transformed <- st_transform(iso_all_modes, crs = "+proj=longlat +datum=WGS84")
 ```
 
-```{r}
+```{r, results='hide', message=FALSE}
 iso_transformed <- iso_transformed %>%
   mutate(transit_score = lengths(st_covers(geometry, Tstops)))
 ```
@@ -160,17 +162,22 @@ iso_transformed <- iso_transformed %>%
 ggplot(iso_transformed) +
   annotation_map_tile(zoomin = 1, type = "cartolight", progress = "none") +
   geom_sf(aes(fill=transit_score), alpha=.5) +
+  scale_fill_viridis_c(option = "C", name = "Walk and drive sheds\nwith T stops", breaks = breaks <- seq(0, 4, by = 1), labels = paste(prettyNum(breaks), "T stops")) +
   theme_map() 
 ```
 
 
-Ok, that figure isn't too helpful because most of the isochrones have only 1 T stop within them. I will take a step back and compare isochrones with and without T stops.
+Ok, that figure is a bit helpful but it looks like most of the development's walk and drive sheds only have 1 T stop within them. I will take a step back and compare isochrones with and without T stops.
+
 
 
 ## 4) Which Isochrones overlap with a T stop?
 
 
-```{r}
+6 of the 10 isochrones have a T stop within them. That means it would take 5 minutes to walk or 5 minutes to drive to the T from 6 of these affordable housing developments. They are shaded in blue in the figure below.
+
+
+```{r, result='hide'}
 iso_transformed <- iso_transformed %>%
   mutate(num_Tstops = lengths(st_covers(iso_transformed, Tstops))) %>%
   mutate(has_Tstops = num_Tstops > 0)
@@ -180,9 +187,6 @@ n_Tstops_iso_transformed <- sum(iso_transformed$has_Tstops)
 
 n_Tstops_iso_transformed
 ```
-
-6 of the 10 isochrones have a T stop within them. That means it would take 5 minutes to walk or 5 minutes to drive to the T. They are shaded in blue in the figure below.
-
 
 ```{r}
 ggplot(iso_transformed) +
@@ -197,7 +201,7 @@ ggplot(iso_transformed) +
 ```
 
 
-```{r}
+```{r, results='hide'}
 otp_stop()
 ```
 
