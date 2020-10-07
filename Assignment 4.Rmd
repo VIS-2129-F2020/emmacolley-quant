@@ -30,6 +30,9 @@ library(dplyr)
 
 # Introduction
 
+I downloaded data points of all housing developments completed in 2020 that include at least 20 affordable units. In this exercise, I will investigate spatial relationships between these housing developments and stops along the T.
+
+
 ```{r, results='hide'}
 Tstops <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\T_stops\\MBTA_Rapid_Transit.shp")
 ```
@@ -73,6 +76,9 @@ otpcon <- otp_connect()
 ## 1) Creating Isochrones
 
 
+I have plotted the new housing developments and created two isochrones: a five minute walk and a five minute drive. I've also layered in the T stops (all lines) to begin to see how close they are to the housing developments.
+
+
 
 ```{r, results='hide'}
 iso_5min_walk <- 
@@ -110,6 +116,7 @@ ggplot(iso_all_modes) +
 
 ## 2) Plotting Walking and Driving distances
 
+
 I've labeled each housing development with their neighborhood to begin to understand differences between neighborhoods and commuting distances.
 
 
@@ -137,6 +144,9 @@ ggplot(iso_areas,
 ## 3) Assigning a Transit Score to Each Isochrone
 
 
+I will use now investigate how many T stops are within each isochrone.
+
+
 ```{r}
 st_as_sf(iso_all_modes)
 iso_transformed <- st_transform(iso_all_modes, crs = "+proj=longlat +datum=WGS84")
@@ -154,6 +164,9 @@ ggplot(iso_transformed) +
 ```
 
 
+Ok, that figure isn't too helpful because most of the isochrones have only 1 T stop within them. I will take a step back and compare isochrones with and without T stops.
+
+
 ## 4) Which Isochrones overlap with a T stop?
 
 
@@ -167,6 +180,10 @@ n_Tstops_iso_transformed <- sum(iso_transformed$has_Tstops)
 
 n_Tstops_iso_transformed
 ```
+
+6 of the 10 isochrones have a T stop within them. That means it would take 5 minutes to walk or 5 minutes to drive to the T. They are shaded in blue in the figure below.
+
+
 ```{r}
 ggplot(iso_transformed) +
   annotation_map_tile(zoomin = 1, type = "cartolight", progress = "none") +
