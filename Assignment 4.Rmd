@@ -1,0 +1,186 @@
+---
+title: "Assignment 4"
+author: "Emma Colley"
+date: "10/07/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: journal
+    highlight: tango
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load libraries, message = FALSE}
+library(osmdata)
+library(opentripplanner)
+library(sf)
+library(tidyverse)
+library(ggthemes)
+library(ggspatial)
+library(viridis)
+library(dplyr)
+```
+
+
+# Introduction
+
+```{r, results='hide'}
+Tstops <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\T_stops\\MBTA_Rapid_Transit.shp")
+```
+
+```{r, results='hide'}
+
+affordable_2020 <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\affordable_2020\\massbuilds-shp-20201004-a44e92.shp") %>%
+  filter(MUNICIPAL == "Boston") %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+
+
+MA_state_plane <- "+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000 +ellps=GRS80 +units=m +no_defs"
+```
+
+
+
+```{r, results='hide'}
+opq(bbox = 'Boston MA USA') %>%
+  add_osm_feature(key = 'highway') %>%
+  osmdata_xml(file = 'OTP/graphs/default/boston_streets.osm')
+```
+
+```{r}
+path_otp <- otp_dl_jar("OTP")
+```
+
+```{r, results='hide'}
+path_data <- file.path(getwd(), "OTP")
+path_otp <- paste(path_data, "otp.jar",sep = "/")
+
+otp_build_graph(otp = path_otp, dir = path_data, memory = 1024)
+```
+
+
+```{r}
+otp_setup(otp = path_otp, dir = path_data, memory = 1024)
+
+# Connect to opentripplanner
+otpcon <- otp_connect()
+```
+## 1) Creating Isochrones
+
+
+
+```{r, results='hide'}
+iso_5min_walk <- 
+  otp_isochrone(otpcon = otpcon, fromPlace = affordable_2020,
+                mode = "WALK", cutoffSec = 300) %>%
+                st_transform(crs = MA_state_plane) %>%
+  mutate(mode = "walk")
+
+iso_5min_drive <- 
+  otp_isochrone(otpcon = otpcon, fromPlace = affordable_2020, 
+                mode = "CAR", cutoffSec = 300) %>%
+                st_transform(crs = MA_state_plane) %>%
+  mutate(mode = "drive")
+
+iso_all_modes <- rbind(iso_5min_drive, iso_5min_walk)
+```
+
+```{r}
+right_side <- st_bbox(iso_all_modes)$xmax
+left_side  <- st_bbox(iso_all_modes)$xmin
+top_side <- st_bbox(iso_all_modes)$ymax
+bottom_side <- st_bbox(iso_all_modes)$ymin
+
+ggplot(iso_all_modes) +
+  annotation_map_tile(zoomin = 0, type = "cartolight", progress = "none") +
+  geom_sf(aes(fill = mode), alpha = 0.5) +
+  geom_sf(data = affordable_2020) +
+  geom_sf(data = Tstops, color = "lightslategrey") +
+  coord_sf(xlim = c(left_side, right_side), 
+           ylim = c(bottom_side, top_side), expand = FALSE) +
+  scale_fill_manual(values = c("skyblue", "royalblue"), name = "Area that is reachable within", labels = c("5 min by car", "5 min by foot")) +
+  theme_map() +
+  labs(caption = "Basemap Copyright OpenStreetMap contributors")
+```
+
+## 2) Plotting Walking and Driving distances
+
+I've labeled each housing development with their neighborhood to begin to understand differences between neighborhoods and commuting distances.
+
+
+```{r}
+iso_areas <- iso_all_modes %>%
+  mutate(area = st_area(iso_all_modes)) %>%
+  st_set_geometry(NULL) %>%
+  pivot_wider(names_from = mode, values_from = area) 
+
+ggplot(iso_areas, 
+       aes(x = as.numeric(walk), y = as.numeric(drive))) +
+  geom_point(color = "lightslategrey", size = 3) +
+  geom_text(aes(label = c("Allston", "South Boston", "Dorchester", "Dorchester", "5", "6", "7","8","9","10")), hjust=-.3) +
+  scale_x_continuous(name = "Area within a ten-minute walking distance\nof housing development\n(square km)",
+            breaks = breaks <- seq(10000, 130000, by = 20000),
+            labels = breaks / 1000000) +
+  scale_y_continuous(name = 
+            "Area within a five-minute driving distance\nof housing development\n(square km)",
+            breaks = breaks <- seq(0, 700000, by = 100000),
+            labels = breaks / 1000000) +
+  theme_minimal()
+```
+
+
+## 3) Assigning a Transit Score to Each Isochrone
+
+
+```{r}
+st_as_sf(iso_all_modes)
+iso_transformed <- st_transform(iso_all_modes, crs = "+proj=longlat +datum=WGS84")
+```
+
+```{r}
+iso_transformed <- iso_transformed %>%
+  mutate(transit_score = lengths(st_covers(geometry, Tstops)))
+```
+```{r}
+ggplot(iso_transformed) +
+  annotation_map_tile(zoomin = 1, type = "cartolight", progress = "none") +
+  geom_sf(aes(fill=transit_score), alpha=.5) +
+  theme_map() 
+```
+
+
+## 4) Which Isochrones overlap with a T stop?
+
+
+```{r}
+iso_transformed <- iso_transformed %>%
+  mutate(num_Tstops = lengths(st_covers(iso_transformed, Tstops))) %>%
+  mutate(has_Tstops = num_Tstops > 0)
+```
+```{r}
+n_Tstops_iso_transformed <- sum(iso_transformed$has_Tstops)
+
+n_Tstops_iso_transformed
+```
+```{r}
+ggplot(iso_transformed) +
+  annotation_map_tile(zoomin = 1, type = "cartolight", progress = "none") +
+  geom_sf(data = iso_transformed,
+          aes(fill = has_Tstops)) +
+  scale_fill_manual(values = c("gray85", "darkblue"),
+          name = "Boston Neighborhoods\nby presence of a community center", 
+          labels = c("Without a T stop",
+                     "With a T stop")) +
+  theme_map()
+```
+
+
+```{r}
+otp_stop()
+```
+
