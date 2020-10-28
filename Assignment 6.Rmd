@@ -1,0 +1,128 @@
+---
+title: "Assignment 6"
+author: "Emma Colley"
+date: "10/28/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: journal
+    highlight: tango
+    code_folding: hide
+---
+
+```{r load libraries, message = FALSE, results='hide'}
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(htmltools)
+library(htmlwidgets)
+```
+
+
+# Read in data
+
+```{r message = FALSE, results='hide'}
+development_all <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\massbuilds\\massbuilds-shp-20201025-6a8a76.shp") %>%
+  filter(MUNICIPAL == "Boston") %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+
+```{r message = FALSE, results='hide'}
+nbhoods <- st_read("http://bostonopendata-boston.opendata.arcgis.com/datasets/3525b0ee6e6b427f9aab5d0a1d0a1a28_0.kml?outSR=%7B%22latestWkid%22%3A2249%2C%22wkid%22%3A102686%7D") %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+
+```{r message = FALSE, results='hide'}
+completed <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\massbuilds\\massbuilds-shp-20201025-6a8a76.shp") %>%
+  filter(MUNICIPAL == "Boston") %>%
+  filter(STATUS == "completed") %>% 
+  filter(YEAR_COMPL > 2017) %>%
+  filter(YEAR_COMPL < 2023) %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+```{r message = FALSE, results='hide'}
+construction <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\massbuilds\\massbuilds-shp-20201025-6a8a76.shp") %>%
+  filter(MUNICIPAL == "Boston") %>%
+  filter(STATUS == "in_construction") %>% 
+  filter(YEAR_COMPL > 2017) %>%
+  filter(YEAR_COMPL < 2023) %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+```{r message = FALSE, results='hide'}
+planning <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\massbuilds\\massbuilds-shp-20201025-6a8a76.shp") %>%
+  filter(MUNICIPAL == "Boston") %>%
+  filter(STATUS == "planning") %>% 
+  filter(YEAR_COMPL > 2017) %>%
+  filter(YEAR_COMPL < 2023) %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+
+```{r message = FALSE, results='hide'}
+completed_pts <- st_centroid(completed)
+
+construction_pts <- st_centroid(construction)
+
+planning_pts <- st_centroid(planning)
+```
+
+```{r}
+development_map <- leaflet(options = leafletOptions(minZoom = 11.3, maxZoom = 18)) %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite (default)") %>%
+  
+   addCircles(data = completed_pts, fillColor = "darkblue", color = "darkblue", 
+             stroke = FALSE, radius = 80, group = "Project Completed",
+              highlightOptions = highlightOptions(fillColor = "darkblue", 
+                                                  fillOpacity = 1), 
+  
+             popup = paste("Name:", completed_pts$NAME, "<br/>",
+                           "Status: Construction Complete", "<br/>",
+                           "Year Complete:", completed_pts$YEAR_COMPL, "<br/>",
+                            "Description:", completed_pts$DESCR, "<br/>")) %>%    
+  
+  addCircles(data = construction_pts, fillColor = "purple", color = "purple", 
+             stroke = FALSE, radius = 80, group = "Project Under Construction",
+              highlightOptions = highlightOptions(fillColor = "purple", 
+                                                  fillOpacity = 1), 
+             
+             popup = paste("Name:", construction_pts$NAME, "<br/>",
+                           "Status: Under Construction", "<br/>",
+                            "Year Complete:", construction_pts$YEAR_COMPL, "<br/>",
+                            "Description:", construction_pts$DESCR, "<br/>")) %>% 
+  
+  
+    addCircles(data = planning_pts, fillColor = "green", color = "green", 
+             stroke = FALSE, radius = 80, group = "Project in Planning",
+              highlightOptions = highlightOptions(fillColor = "green", 
+                                                  fillOpacity = 1), 
+             
+             popup = paste("Name:", planning_pts$NAME, "<br/>",
+                           "Status: In Planning", "<br/>",
+                          "Year Complete:", planning_pts$YEAR_COMPL, "<br/>",
+                            "Description:", planning_pts$DESCR, "<br/>")) %>% 
+  
+    
+  addPolygons(data = nbhoods, fillColor = "gray95", fillOpacity = .05, stroke = F) %>%
+               
+    addControl("New and Upcoming Development in Boston 2018-2022", position = "topright") %>%
+  
+  addControl('<a href="https://www.massbuilds.com/">Data source</a>',
+             position = "bottomleft") %>%
+
+  addLayersControl(
+    overlayGroups = c("Project Completed", "Project Under Construction", "Project in Planning"),
+    options = layersControlOptions(collapsed = FALSE))
+
+
+development_map
+```
+
+```{r}
+saveWidget(development_map, file = "bosdev.html")
+```
+
