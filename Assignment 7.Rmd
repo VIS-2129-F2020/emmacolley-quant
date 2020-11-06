@@ -1,0 +1,149 @@
+---
+title: "Assignment 7"
+author: "Emma Colley"
+date: "10/02/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: journal
+    highlight: tango
+    code_folding: hide
+---
+
+## Loading Libraries
+
+```{r load libraries, message = FALSE, results='hide'}
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(htmltools)
+library(htmlwidgets)
+library(raster)
+library(gstat)
+library(spatial)
+library(viridis)
+```
+
+## Read in data
+
+I am examining the number of evictions per census block in Boston in the year 2016. 
+
+This research uses data from The Eviction Lab at Princeton University, a project directed by Matthew Desmond and designed by Ashley Gromis, Lavar Edmonds, James Hendrickson, Katie Krywokulski, Lillian Leung, and Adam Porton. The Eviction Lab is funded by the JPB, Gates, and Ford Foundations as well as the Chan Zuckerberg Initiative. More information is found at evictionlab.org.
+
+```{r message = FALSE, results='hide'}
+
+evictions <- sf::st_read(dsn = "C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\block-groups.geojson") %>%
+  filter(pl == "Suffolk County, Massachusetts") %>%
+  filter(n != "9901.01.0") %>%
+  filter(n != "9801.01.1") %>%
+ filter(n != "9815.01.1") %>%
+  filter(n != "9812.01.1") %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+```{r message = FALSE, results='hide'}
+blockgroups <- st_read("C:\\Users\\emmac\\Documents\\GitHub\\emmacolley-vis\\tl_2016_25_bg.shp") %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84") #project to wgs84
+```
+
+## 01 Chloropleth Map
+
+```{r}
+evictions$label <- 
+  paste(evictions$n, "<br>", 
+        evictions$e.01, "evictions in 2016") %>% 
+  lapply(htmltools::HTML)
+
+bins <- seq(min(evictions$e.01),
+            max(evictions$e.01))
+pal <- colorNumeric("inferno", 
+                    domain = evictions$e.01,
+                    na.color = "#00000000")
+
+leaflet(evictions) %>%
+  addProviderTiles(providers$Stamen.TonerLite) %>%
+  addPolygons(highlightOptions = highlightOptions(fillOpacity = 1),
+              label = ~label,
+              fillColor = ~pal(e.01),
+              weight = 1, color = "black") %>% 
+  addLegend(pal = pal, 
+            values = ~e.01,
+            bins = 5,
+            opacity = 0.8, title = "Number of Evictions<br>by Block Group",
+            position = "topright")
+```
+
+## 02 Point Map
+
+
+
+```{r}
+MA_state_plane <- "+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000 +ellps=GRS80 +units=m +no_defs "
+
+WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+
+evictions_points <- st_centroid(
+  st_transform(evictions, crs = MA_state_plane)) %>%
+  st_transform(WGS84)
+
+leaflet(evictions_points) %>%
+  addProviderTiles(providers$Stamen.TonerLite) %>%
+  addCircles(label = ~label,
+             fillColor = ~pal(e.01),
+             stroke = FALSE, 
+             radius = 50, 
+             fillOpacity = 1) %>% 
+  addLegend(pal = pal, 
+            values = ~e.01,
+            bins = 3,
+            opacity = 0.7, title = "Evictions per Census Block, 2016",
+            position = "topright")
+```
+
+```{r message = FALSE, results='hide'}
+evictions_points_sp <- evictions_points %>%
+  st_transform(MA_state_plane) %>%
+  as_Spatial()
+
+evictions_poly_sp <- evictions %>%
+  st_transform(MA_state_plane) %>%
+  as_Spatial()
+```
+
+```{r message = FALSE, results='hide'}
+suffolk_raster <- raster(evictions_poly_sp, res=10)
+```
+
+
+## 03 Interpolation Map
+
+
+```{r message = FALSE, results='hide'}
+gs <- gstat(formula=e.01~1, locations=evictions_points_sp)
+idw_interp <- interpolate(suffolk_raster, gs)
+
+idw_interp_clip <- mask(idw_interp, evictions_poly_sp)
+```
+```{r}
+leaflet(evictions_points) %>%
+  addProviderTiles(providers$Stamen.TonerLite) %>%
+  addRasterImage(idw_interp_clip, colors = pal, opacity = 0.8) %>% 
+  addLegend(pal = pal, 
+            values = ~e.01,
+            bins = 3,
+            opacity = 0.7, title = "Evictions per Census Block, 2016",
+            position = "topright")
+
+```
+
+## Discussion
+
+A) The most informative map is the cholorpleth map because it is color-coded at a small scale (number of evictions per census block.) I've also included a pop-up so that the viewer can read the census block number and exact number of evictions. This may be helpful for further research
+
+B) In my opinion, the most interesting map is the interpolation map. The smaller "hot spots" are congregated in Roxbury, Dorchester, and Mattapan. A few specific spots are extremely noticeable in the Nubian Square neighborhood of Boston. This makes me wonder if there is a particular building or complex that has a high eviction rate. especially striking in this map because the rest of Boston is dark purple, meaning there were zero or close to zero evictions in 2016. 
+
+C) I believe the map that is most appropriate to the data is the chloropleth map, although I could also make an argument for the interpolation map. I think the chloropleth map is most appropriate because this is fine-grain data that is site specific. Therefore, it is helpful to see it applied to the scale of the census block. You can use this information to research specific buildings are complexes on these blocks where evictions are especially prevalent.  
+
+D) For the reasons above, I believe the "best" map is the chloropleth map.  
+
